@@ -1,5 +1,5 @@
 ---
-- name: Deploy Docker + WordPress
+- name: Deploy MySQL + WordPress 
   hosts: wordpress_hosts
   become: true
   roles:
