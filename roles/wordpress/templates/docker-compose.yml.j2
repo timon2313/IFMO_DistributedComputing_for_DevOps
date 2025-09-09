@@ -1,0 +1,28 @@
+services:
+  db:
+    image: "{{ mysql_image }}"
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: "{{ db_name }}"
+      MYSQL_USER: "{{ db_user }}"
+      MYSQL_PASSWORD: "{{ db_pass }}"
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - "{{ mysql_volume }}:/var/lib/mysql"
+
+  wordpress:
+    image: "{{ wp_image }}"
+    depends_on:
+      - db
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: "db"
+      WORDPRESS_DB_USER: "{{ db_user }}"
+      WORDPRESS_DB_PASSWORD: "{{ db_pass }}"
+      WORDPRESS_DB_NAME: "{{ db_name }}"
+    ports:
+      - "{{ wordpress_http_port }}:80"
+
+volumes:
+  {{ mysql_volume }}:
+    external: false

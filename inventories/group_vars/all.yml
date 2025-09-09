@@ -1,0 +1,12 @@
+app_dir: /opt/webapp
+
+wp_image: "wordpress:6.8.2-php8.1-apache"
+mysql_image: "mysql:8.4.6"
+
+db_user: "wordpress"
+db_pass: "wordpress"
+db_name: "wordpress"
+
+wordpress_http_port: "80"  
+
+mysql_volume: "wp_mysql_data"
