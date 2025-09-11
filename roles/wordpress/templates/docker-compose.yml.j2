@@ -1,28 +1,49 @@
 services:
-  db:
-    image: "{{ mysql_image }}"
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: "{{ db_name }}"
-      MYSQL_USER: "{{ db_user }}"
-      MYSQL_PASSWORD: "{{ db_pass }}"
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
-    volumes:
-      - "{{ mysql_volume }}:/var/lib/mysql"
-
   wordpress:
-    image: "{{ wp_image }}"
-    depends_on:
-      - db
-    restart: unless-stopped
-    environment:
-      WORDPRESS_DB_HOST: "db"
-      WORDPRESS_DB_USER: "{{ db_user }}"
-      WORDPRESS_DB_PASSWORD: "{{ db_pass }}"
-      WORDPRESS_DB_NAME: "{{ db_name }}"
+    image: {{ wp_image }}
     ports:
-      - "{{ wordpress_http_port }}:80"
+      - "{{ wordpress_port }}:80"
+    environment:
+      WORDPRESS_DB_HOST: {{ mysql_master }}:3306
+      WORDPRESS_DB_USER: "{{ wordpress_db_user }}"
+      WORDPRESS_DB_PASSWORD: "{{ wordpress_db_password }}"
+      WORDPRESS_DB_NAME: "{{ wordpress_db_name }}"
+    volumes:
+      - wp_data:/var/www/html
+    depends_on:
+      - mysql_master
+
+  mysql_master:
+    image: {{ mysql_image }}
+    command: ["--server-id={{ mysql_master_server_id }}", "--log-bin=mysql-bin", "--binlog-format=ROW"]
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "{{ wordpress_db_root_password }}"
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: "{{ wordpress_db_name }}"
+      MYSQL_USER: "{{ wordpress_db_user }}"
+      MYSQL_PASSWORD: "{{ wordpress_db_password }}"
+    volumes:
+      - mysql_master_data:/var/lib/mysql
+
+  mysql_slave:
+    image: {{ mysql_image }}
+    command: ["--server-id={{ mysql_slave_server_id }}", "--log-bin=mysql-bin", "--binlog-format=ROW", "--read-only=ON"]
+    ports:
+      - "3307:3306"
+    depends_on:
+      - mysql_master
+    environment:
+      MYSQL_ROOT_PASSWORD: "{{ wordpress_db_root_password }}"
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: "{{ wordpress_db_name }}"
+      MYSQL_USER: "{{ wordpress_db_user }}"
+      MYSQL_PASSWORD: "{{ wordpress_db_password }}"
+    volumes:
+      - mysql_slave_data:/var/lib/mysql
 
 volumes:
-  {{ mysql_volume }}:
-    external: false
+  wp_data:
+  mysql_master_data:
+  mysql_slave_data:

@@ -1,6 +1,6 @@
 ---
 - name: Deploy MySQL + WordPress 
-  hosts: wordpress_hosts
+  hosts: carrier
   become: true
   roles:
     - docker

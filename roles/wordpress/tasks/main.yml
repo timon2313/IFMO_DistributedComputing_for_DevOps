@@ -11,8 +11,33 @@
     dest: "{{ app_dir }}/docker-compose.yml"
     mode: "0644"
 
-- name: Start Wordpress
+- name: Start DB master service
   community.docker.docker_compose_v2:
     project_src: "{{ app_dir }}"
     state: present
-    pull: always
+    services:
+      - "{{ mysql_master }}"
+    pull: missing
+    recreate: never
+    remove_orphans: true
+
+- name: Install PyMySQL for Ansible modules
+  ansible.builtin.apt:
+    name: python3-pymysql
+    state: present
+    update_cache: true
+
+- name: Wait for MySQL master on 3306
+  ansible.builtin.wait_for:
+    host: localhost
+    port: 3306
+    state: started
+    delay: 5
+    timeout: 120
+
+- name: Start WordPress service
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_dir }}"
+    services: [wordpress]
+    pull: missing
+    recreate: never

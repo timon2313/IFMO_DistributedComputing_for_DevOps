@@ -1,12 +1,20 @@
 app_dir: /opt/webapp
 
 wp_image: "wordpress:6.8.2-php8.1-apache"
-mysql_image: "mysql:8.4.6"
+mysql_image: "mysql:8.0"
 
-db_user: "wordpress"
-db_pass: "wordpress"
-db_name: "wordpress"
+wordpress_db_user: "wordpress"
+wordpress_db_password: "wordpress"
+wordpress_db_name: "wordpress"
+wordpress_db_root_password: "rootpassword"
 
-wordpress_http_port: "80"  
+mysql_master: "mysql_master"
+mysql_slave: "mysql_slave"
+replication_password: "password"
+mysql_master_server_id: 1
+mysql_slave_server_id: 2
+
+is_wordpress: true 
+wordpress_port: "80"  
 
 mysql_volume: "wp_mysql_data"
