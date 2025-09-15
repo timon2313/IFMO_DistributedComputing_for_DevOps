@@ -17,10 +17,12 @@
 - Обновить inventories/hosts.ini используя свой IP, проверить подключение
   ```bash
   ansible all -i inventories/hosts.ini -m ping
+  
 - Установка docker, wordpress, MySQL
- ```
- ansible-playbook -i inventories/hosts.ini playbook1.yml
+  ```bash
+  ansible-playbook -i inventories/hosts.ini playbook1.yml
+
 - Создание кластера, настройка репликации Master -> Slave
-```
-ansible-playbook -i inventories.hosts.ini playbook2.yml
+  ```bash
+  ansible-playbook -i inventories.hosts.ini playbook2.yml
 
