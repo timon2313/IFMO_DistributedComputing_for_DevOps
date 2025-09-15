@@ -24,5 +24,5 @@
 
 - Создание кластера, настройка репликации Master -> Slave
   ```bash
-  ansible-playbook -i inventories.hosts.ini playbook2.yml
+  ansible-playbook -i inventories/hosts.ini playbook2.yml
 
