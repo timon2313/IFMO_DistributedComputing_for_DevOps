@@ -27,6 +27,12 @@
     state: present
     update_cache: true
 
+- name: Ensure MySQL client tools are installed
+  ansible.builtin.apt:
+    name: mysql-client
+    state: present
+    update_cache: true
+
 - name: Wait for MySQL master on 3306
   ansible.builtin.wait_for:
     host: localhost

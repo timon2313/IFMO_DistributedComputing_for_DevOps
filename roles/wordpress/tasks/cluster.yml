@@ -1,82 +1,108 @@
 ---
-
-- name: Wait for MySQL to be ready 
+- name: Wait until MySQL master is ready
   community.mysql.mysql_info:
     login_host: 127.0.0.1
+    login_port: 3306
     login_user: root
     login_password: "{{ wordpress_db_root_password }}"
-  register: result
+  register: master_ping
   retries: 20
   delay: 3
-  failed_when: false
+  until: master_ping is succeeded
   changed_when: false
-  until: result is succeeded
 
-- name: Create replication user on master
+- name: Dump wordpress DB from master
+  community.mysql.mysql_db:
+    state: dump
+    name: "{{ wordpress_db_name }}"
+    login_host: 127.0.0.1
+    login_port: 3306
+    login_user: root
+    login_password: "{{ wordpress_db_root_password }}"
+    target: /tmp/wordpress.sql
+    dump_extra_args: "--single-transaction --routines --triggers --events"
+
+- name: Ensure replication user exists on master
   community.mysql.mysql_user:
     login_host: 127.0.0.1
     login_port: 3306
     login_user: root
     login_password: "{{ wordpress_db_root_password }}"
     name: replicator
-    host: '%'
+    host: "%"
     password: "{{ replication_password }}"
     priv: "*.*:REPLICATION SLAVE"
     state: present
     auth_plugin: "{{ repl_auth_plugin | default(omit) }}"
 
-- name: Get master binlog status
-  community.mysql.mysql_query:
-    login_user: root
-    login_password: "{{ wordpress_db_root_password }}"
+- name: Get master binlog coordinates
+  community.mysql.mysql_replication:
+    mode: getprimary
     login_host: 127.0.0.1
     login_port: 3306
-    query: SHOW MASTER STATUS;
-  register: master_status
-
-- name: Set facts for replication
-  ansible.builtin.set_fact:
-    master_log_file: "{{ master_status.query_result[0][0]['File'] }}"
-    master_log_pos: "{{ master_status.query_result[0][0]['Position'] }}"
-
-- name: Wait until slave MySQL is ready
-  community.mysql.mysql_info:
     login_user: root
     login_password: "{{ wordpress_db_root_password }}"
+  register: master_status
+  changed_when: false
+
+- name: Wait until MySQL slave is ready
+  community.mysql.mysql_info:
     login_host: 127.0.0.1
     login_port: 3307
+    login_user: root
+    login_password: "{{ wordpress_db_root_password }}"
   register: slave_ping
   retries: 20
   delay: 3
   until: slave_ping is succeeded
+  changed_when: false
 
-- name: Configure slave replication
+- name: Stop slave replication 
+  community.mysql.mysql_replication:
+    mode: stopreplica
+    login_host: 127.0.0.1
+    login_port: 3307
+    login_user: root
+    login_password: "{{ wordpress_db_root_password }}"
+  failed_when: false
+
+- name: Import dump into slave
+  community.mysql.mysql_db:
+    state: import
+    name: "{{ wordpress_db_name }}"
+    login_host: 127.0.0.1
+    login_port: 3307
+    login_user: root
+    login_password: "{{ wordpress_db_root_password }}"
+    target: /tmp/wordpress.sql
+
+- name: Configure slave -> changeprimary
   community.mysql.mysql_replication:
     mode: changeprimary
     primary_host: "{{ mysql_master }}"
     primary_port: 3306
     primary_user: replicator
     primary_password: "{{ replication_password }}"
-    primary_log_file: "{{ master_log_file }}"
-    primary_log_pos: "{{ master_log_pos }}"
-    login_user: root
-    login_password: "{{ wordpress_db_root_password }}"
+    primary_log_file: "{{ master_status.File }}"
+    primary_log_pos: "{{ master_status.Position }}"
     login_host: 127.0.0.1
     login_port: 3307
+    login_user: root
+    login_password: "{{ wordpress_db_root_password }}"
 
-- name: Start slave replication threads
+- name: Start slave replication
   community.mysql.mysql_replication:
     mode: startreplica
-    login_user: root
-    login_password: "{{ wordpress_db_root_password }}"
     login_host: 127.0.0.1
     login_port: 3307
+    login_user: root
+    login_password: "{{ wordpress_db_root_password }}"
 
-- name: Ensure slave is read‑only
+- name: Ensure slave is read-only
   community.mysql.mysql_variables:
-    login_user: root
-    login_password: "{{ wordpress_db_root_password }}"
     login_host: 127.0.0.1
     login_port: 3307
+    login_user: root
+    login_password: "{{ wordpress_db_root_password }}"
     variable: read_only
-    value: 'ON'
+    value: "ON"
