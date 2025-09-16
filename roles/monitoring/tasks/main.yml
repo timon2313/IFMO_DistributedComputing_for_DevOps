@@ -1,0 +1,80 @@
+---
+- name: Ensure monitoring dirs exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ monitoring_dir }}"
+    - "{{ monitoring_dir }}/provisioning/datasources"
+    - "{{ monitoring_dir }}/provisioning/dashboards"
+
+- name: Create MySQL exporter user on master
+  community.mysql.mysql_user:
+    login_host: 127.0.0.1
+    login_port: 3306
+    login_user: root
+    login_password: "{{ wordpress_db_root_password }}"
+    name: "{{ mysql_exporter_user }}"
+    password: "{{ mysql_exporter_password }}"
+    host: "%"
+    priv: "*.*:PROCESS,REPLICATION CLIENT,SELECT"
+    state: present
+
+- name: Create MySQL exporter user on slave
+  community.mysql.mysql_user:
+    login_host: 127.0.0.1
+    login_port: 3307
+    login_user: root
+    login_password: "{{ wordpress_db_root_password }}"
+    name: "{{ mysql_exporter_user }}"
+    password: "{{ mysql_exporter_password }}"
+    host: "%"
+    priv: "*.*:PROCESS,REPLICATION CLIENT,SELECT"
+    state: present
+
+- name: Push prometheus.yml
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ monitoring_dir }}/prometheus.yml"
+    mode: "0644"
+
+- name: Push Grafana datasource provisioning
+  ansible.builtin.template:
+    src: grafana-datasource.yml.j2
+    dest: "{{ monitoring_dir }}/provisioning/datasources/datasource.yml"
+    mode: "0644"
+
+- name: Push Grafana dashboards provisioning
+  ansible.builtin.template:
+    src: grafana-dashboards.yml.j2
+    dest: "{{ monitoring_dir }}/provisioning/dashboards/dashboards.yml"
+    mode: "0644"
+
+- name: Copy local MySQL dashboard JSON
+  ansible.builtin.copy:
+    src: "{{ mysql_dashboard_filename }}"
+    dest: "{{ monitoring_dir }}/provisioning/dashboards/{{ mysql_dashboard_filename }}"
+    mode: "0644"
+
+- name: Write mysqld_exporter my.cnf configs
+  ansible.builtin.copy:
+    dest: "{{ monitoring_dir }}/{{ item.name }}"
+    mode: "0644"
+    content: |
+      [client]
+      user={{ mysql_exporter_user }}
+      password={{ mysql_exporter_password }}
+      host={{ item.host }}
+      port={{ item.port }}
+  loop:
+    - { name: '.my_master.cnf', host: '{{ mysql_master }}', port: 3306 }
+    - { name: '.my_slave.cnf',  host: '{{ mysql_slave }}',  port: 3306 }
+
+- name: Start/Update stack (DB, WP, monitoring)
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_dir }}"
+    state: present
+    pull: missing
+    recreate: auto
+    remove_orphans: true

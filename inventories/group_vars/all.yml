@@ -1,7 +1,11 @@
 app_dir: /opt/webapp
+monitoring_dir: "{{ app_dir }}/monitoring"
 
 wp_image: "wordpress:6.8.2-php8.1-apache"
 mysql_image: "mysql:8.0"
+prometheus_image: "prom/prometheus:v2.54.1"
+grafana_image: "grafana/grafana:11.2.0"
+mysqld_exporter_image: "prom/mysqld-exporter:v0.15.1"
 
 wordpress_db_user: "wordpress"
 wordpress_db_password: "wordpress"
@@ -13,8 +17,17 @@ mysql_slave: "mysql_slave"
 replication_password: "password"
 mysql_master_server_id: 1
 mysql_slave_server_id: 2
+mysql_exporter_user: "exporter"
+mysql_exporter_password: "exporter_password"
 
 is_wordpress: true 
 wordpress_port: "80"  
 
 mysql_volume: "wp_mysql_data"
+
+grafana_port: "3000"
+prometheus_port: "9090"
+grafana_admin_user: admin
+grafana_admin_password: admin
+
+mysql_dashboard_filename: "dashboard.json"              

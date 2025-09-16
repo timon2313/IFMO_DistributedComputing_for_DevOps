@@ -1,0 +1,6 @@
+---
+- name: Playbook 3 - Monitoring for MySQL cluster
+  hosts: carrier
+  become: true
+  roles:
+    - monitoring
